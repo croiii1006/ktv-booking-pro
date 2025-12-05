@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Phone, CreditCard, Calendar } from 'lucide-react';
+import { Search, Plus, Phone } from 'lucide-react';
 import { Customer } from '@/types';
 
 const memberTypeLabels = {
@@ -72,6 +72,7 @@ export default function Customers() {
 
 function CustomerCard({ customer, onClick }: { customer: Customer; onClick: () => void }) {
   const typeInfo = memberTypeLabels[customer.memberType];
+  const totalBalance = customer.rechargeBalance + customer.giftBalance;
 
   return (
     <button
@@ -92,8 +93,8 @@ function CustomerCard({ customer, onClick }: { customer: Customer; onClick: () =
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs text-muted-foreground">余额</p>
-          <p className="text-lg font-bold text-secondary">¥{customer.balance.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">总余额</p>
+          <p className="text-lg font-bold text-secondary">¥{totalBalance.toLocaleString()}</p>
         </div>
       </div>
     </button>

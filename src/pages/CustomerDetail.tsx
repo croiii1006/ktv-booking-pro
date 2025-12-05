@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
-import { Phone, CreditCard, Calendar, User } from 'lucide-react';
+import { Phone, Calendar, User, CreditCard, IdCard } from 'lucide-react';
 
 const memberTypeLabels = {
   regular: { label: '普通会员', color: 'bg-muted text-muted-foreground' },
@@ -28,6 +28,7 @@ export default function CustomerDetail() {
   }
 
   const typeInfo = memberTypeLabels[customer.memberType];
+  const totalBalance = customer.rechargeBalance + customer.giftBalance;
 
   return (
     <AppLayout title="客户详情" showBack>
@@ -52,38 +53,44 @@ export default function CustomerDetail() {
             </div>
           </div>
 
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground">账户余额</p>
-            <p className="text-3xl font-bold text-secondary">¥{customer.balance.toLocaleString()}</p>
+          {/* Balance Info */}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <CreditCard className="w-3 h-3" /> 充值余额
+              </p>
+              <p className="text-lg font-bold text-secondary">¥{customer.rechargeBalance.toLocaleString()}</p>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <CreditCard className="w-3 h-3" /> 赠送余额
+              </p>
+              <p className="text-lg font-bold text-secondary">¥{customer.giftBalance.toLocaleString()}</p>
+            </div>
           </div>
 
-          <div className="text-xs text-muted-foreground mt-4">
+          <div className="mt-4 p-4 bg-secondary/10 rounded-lg">
+            <p className="text-sm text-muted-foreground">总余额</p>
+            <p className="text-2xl font-bold text-secondary">¥{totalBalance.toLocaleString()}</p>
+          </div>
+
+          <div className="text-xs text-muted-foreground mt-4 space-y-1">
+            <p className="flex items-center gap-1"><IdCard className="w-3 h-3" /> 身份证: {customer.idCard}</p>
             <p>客户编号: {customer.id}</p>
-            <p>注册时间: {customer.createdAt}</p>
+            <p>办理日期: {customer.registrationDate}</p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            variant="gold"
-            size="lg"
-            className="w-full"
-            onClick={() => navigate(`/customers/${customer.id}/recharge`)}
-          >
-            <CreditCard className="w-5 h-5 mr-2" />
-            充值
-          </Button>
-          <Button
-            variant="default"
-            size="lg"
-            className="w-full"
-            onClick={() => navigate(`/booking?customerId=${customer.id}`)}
-          >
-            <Calendar className="w-5 h-5 mr-2" />
-            订房
-          </Button>
-        </div>
+        {/* Action Button */}
+        <Button
+          variant="default"
+          size="lg"
+          className="w-full"
+          onClick={() => navigate('/booking-grid')}
+        >
+          <Calendar className="w-5 h-5 mr-2" />
+          订房
+        </Button>
       </div>
     </AppLayout>
   );

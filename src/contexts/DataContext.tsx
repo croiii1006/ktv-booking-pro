@@ -8,7 +8,7 @@ interface DataContextType {
   rechargeRecords: RechargeRecord[];
   addCustomer: (customer: Omit<Customer, 'id' | 'createdAt'>) => void;
   updateCustomerBalance: (customerId: string, amount: number, staffId: string) => void;
-  addOrder: (order: Omit<Order, 'id' | 'createdAt' | 'status'>) => void;
+  addOrder: (order: Omit<Order, 'id' | 'createdAt' | 'status'>, directApprove?: boolean) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus, userId?: string) => void;
   getCustomerById: (id: string) => Customer | undefined;
   getRoomById: (id: string) => Room | undefined;
@@ -33,10 +33,10 @@ const initialRooms: Room[] = [
 ];
 
 const initialCustomers: Customer[] = [
-  { id: 'C001', name: '陈伟', phone: '13900001111', memberType: 'vip', balance: 5000, createdAt: '2024-01-15', staffId: 'S001' },
-  { id: 'C002', name: '刘芳', phone: '13900002222', memberType: 'svip', balance: 15000, createdAt: '2024-02-20', staffId: 'S001' },
-  { id: 'C003', name: '周杰', phone: '13900003333', memberType: 'regular', balance: 1000, createdAt: '2024-03-10', staffId: 'S002' },
-  { id: 'C004', name: '吴婷', phone: '13900004444', memberType: 'vip', balance: 3500, createdAt: '2024-03-25', staffId: 'S002' },
+  { id: 'C001', name: '陈伟', phone: '13900001111', idCard: '310101199001011234', memberType: 'vip', registrationDate: '2024-01-15', rechargeBalance: 3000, giftBalance: 2000, createdAt: '2024-01-15', staffId: 'S001' },
+  { id: 'C002', name: '刘芳', phone: '13900002222', idCard: '310101199202022345', memberType: 'svip', registrationDate: '2024-02-20', rechargeBalance: 10000, giftBalance: 5000, createdAt: '2024-02-20', staffId: 'S001' },
+  { id: 'C003', name: '周杰', phone: '13900003333', idCard: '310101199303033456', memberType: 'regular', registrationDate: '2024-03-10', rechargeBalance: 800, giftBalance: 200, createdAt: '2024-03-10', staffId: 'S002' },
+  { id: 'C004', name: '吴婷', phone: '13900004444', idCard: '310101199404044567', memberType: 'vip', registrationDate: '2024-03-25', rechargeBalance: 2500, giftBalance: 1000, createdAt: '2024-03-25', staffId: 'S002' },
 ];
 
 const today = new Date().toISOString().split('T')[0];
@@ -66,7 +66,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const updateCustomerBalance = (customerId: string, amount: number, staffId: string) => {
     setCustomers(customers.map(c => 
-      c.id === customerId ? { ...c, balance: c.balance + amount } : c
+      c.id === customerId ? { ...c, rechargeBalance: c.rechargeBalance + amount } : c
     ));
     const record: RechargeRecord = {
       id: `RC${String(rechargeRecords.length + 1).padStart(3, '0')}`,
@@ -78,12 +78,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setRechargeRecords([...rechargeRecords, record]);
   };
 
-  const addOrder = (order: Omit<Order, 'id' | 'createdAt' | 'status'>) => {
+  const addOrder = (order: Omit<Order, 'id' | 'createdAt' | 'status'>, directApprove: boolean = false) => {
     const newOrder: Order = {
       ...order,
       id: `O${String(orders.length + 1).padStart(3, '0')}`,
-      status: 'pending',
+      status: directApprove ? 'approved' : 'pending',
       createdAt: new Date().toISOString(),
+      ...(directApprove && {
+        approvedAt: new Date().toISOString(),
+        approvedBy: order.staffId,
+      }),
     };
     setOrders([...orders, newOrder]);
   };

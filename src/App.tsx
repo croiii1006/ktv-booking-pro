@@ -11,8 +11,6 @@ import Home from "./pages/Home";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import NewCustomer from "./pages/NewCustomer";
-import Recharge from "./pages/Recharge";
-import Booking from "./pages/Booking";
 import Orders from "./pages/Orders";
 import BookingGrid from "./pages/BookingGrid";
 import NotFound from "./pages/NotFound";
@@ -39,8 +37,6 @@ function AppRoutes() {
       <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
       <Route path="/customers/new" element={<ProtectedRoute><NewCustomer /></ProtectedRoute>} />
       <Route path="/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
-      <Route path="/customers/:id/recharge" element={<ProtectedRoute><Recharge /></ProtectedRoute>} />
-      <Route path="/booking" element={<ProtectedRoute><Booking /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/booking-grid" element={<ProtectedRoute><BookingGrid /></ProtectedRoute>} />
       

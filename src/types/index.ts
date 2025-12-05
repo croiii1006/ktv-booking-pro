@@ -11,8 +11,11 @@ export interface Customer {
   id: string;
   name: string;
   phone: string;
+  idCard: string;
   memberType: 'regular' | 'vip' | 'svip';
-  balance: number;
+  registrationDate: string;
+  rechargeBalance: number;
+  giftBalance: number;
   createdAt: string;
   staffId: string;
 }
