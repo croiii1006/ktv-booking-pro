@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { ChevronLeft, ChevronRight, Menu, X, Home, Users, DollarSign, Calendar, Grid3X3, ClipboardList, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Menu, X, Home, Users, Grid3X3, ClipboardList } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Order } from '@/types';
 
 const roomTypeLabels = {
   luxury: '豪华包',
@@ -29,15 +27,6 @@ const roomTypeLabels = {
   small: '小包',
 };
 
-const sidebarItems = [
-  { icon: Home, label: '首页', to: '/home' },
-  { icon: Grid3X3, label: '订房情况', to: '/booking-grid', active: true },
-  { icon: Users, label: '用户管理', to: '/customers' },
-  { icon: DollarSign, label: '充值记录', to: '/customers' },
-  { icon: Calendar, label: '消费记录', to: '/orders' },
-  { icon: ClipboardList, label: '订单管理', to: '/orders' },
-];
-
 export default function BookingGrid() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -45,8 +34,20 @@ export default function BookingGrid() {
   const [bookingCustomerId, setBookingCustomerId] = useState('');
   
   const navigate = useNavigate();
-  const { user, isLeader, logout } = useAuth();
+  const { user, isLeader } = useAuth();
   const { rooms, customers, orders, addOrder, updateOrderStatus, getBookingStatus, getOrderByRoomAndDate, getCustomerById, getRoomById } = useData();
+
+  const sidebarItems = isLeader ? [
+    { icon: Home, label: '首页', to: '/home' },
+    { icon: Grid3X3, label: '排房情况', to: '/booking-grid', active: true },
+    { icon: Users, label: '我的客户', to: '/customers' },
+    { icon: ClipboardList, label: '订单审核', to: '/orders' },
+  ] : [
+    { icon: Home, label: '首页', to: '/home' },
+    { icon: Grid3X3, label: '排房情况', to: '/booking-grid', active: true },
+    { icon: Users, label: '我的客户', to: '/customers' },
+    { icon: ClipboardList, label: '订单申请', to: '/orders' },
+  ];
 
   // Generate dates for current week view
   const dates = useMemo(() => {
@@ -73,11 +74,11 @@ export default function BookingGrid() {
   };
 
   const handleCellClick = (roomId: string, date: string) => {
-    const status = getBookingStatus(roomId, date);
     setSelectedCell({ roomId, date });
     setBookingCustomerId('');
   };
 
+  // Staff submits application (pending), Leader books directly (approved)
   const handleBooking = () => {
     if (!selectedCell || !bookingCustomerId) {
       toast({ title: '请选择客户', variant: 'destructive' });
@@ -89,16 +90,20 @@ export default function BookingGrid() {
       customerId: bookingCustomerId,
       staffId: user?.id || '',
       date: selectedCell.date,
-    });
+    }, isLeader); // Leader's booking is directly approved
 
-    toast({ title: '预定成功', description: '订房申请已提交，等待审核' });
+    if (isLeader) {
+      toast({ title: '预定成功', description: '房间已预定' });
+    } else {
+      toast({ title: '申请已提交', description: '等待队长审核' });
+    }
     setSelectedCell(null);
     setBookingCustomerId('');
   };
 
   const handleMarkPaid = (orderId: string) => {
     updateOrderStatus(orderId, 'paid', user?.id);
-    toast({ title: '已标记支付' });
+    toast({ title: '已到店支付', description: '订单已完成' });
     setSelectedCell(null);
   };
 
@@ -111,6 +116,130 @@ export default function BookingGrid() {
   const selectedStatus = selectedCell ? getBookingStatus(selectedCell.roomId, selectedCell.date) : null;
   const selectedOrder = selectedCell ? getOrderByRoomAndDate(selectedCell.roomId, selectedCell.date) : null;
   const selectedRoom = selectedCell ? getRoomById(selectedCell.roomId) : null;
+
+  // Determine dialog content based on role and status
+  const renderDialogContent = () => {
+    if (!selectedCell || !selectedRoom) return null;
+
+    // Available cell
+    if (selectedStatus === 'available') {
+      return (
+        <>
+          <DialogHeader>
+            <DialogTitle>{isLeader ? '预定包厢' : '提交预定申请'}</DialogTitle>
+            <DialogDescription>
+              {selectedRoom.number}号 {roomTypeLabels[selectedRoom.type]} - {selectedCell.date}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">选择客户</label>
+              <Select value={bookingCustomerId} onValueChange={setBookingCustomerId}>
+                <SelectTrigger className="h-12">
+                  <SelectValue placeholder="请选择客户" />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name} ({c.phone})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-muted rounded-lg p-3 text-sm">
+              <p className="text-muted-foreground">{isLeader ? '队长' : '业务员'}: {user?.name} ({user?.id})</p>
+            </div>
+            <Button variant="gold" className="w-full" onClick={handleBooking}>
+              {isLeader ? '确认预定' : '提交申请'}
+            </Button>
+          </div>
+        </>
+      );
+    }
+
+    // Booked cell (green)
+    if (selectedStatus === 'booked' && selectedOrder) {
+      return (
+        <>
+          <DialogHeader>
+            <DialogTitle>预定详情</DialogTitle>
+            <DialogDescription>
+              订单编号: {selectedOrder.id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">房间:</span>
+                <span>{selectedRoom.number}号 {roomTypeLabels[selectedRoom.type]}</span>
+                <span className="text-muted-foreground">日期:</span>
+                <span>{selectedCell.date}</span>
+                <span className="text-muted-foreground">客户:</span>
+                <span>{getCustomerById(selectedOrder.customerId)?.name}</span>
+                <span className="text-muted-foreground">申请人:</span>
+                <span>{selectedOrder.staffId}</span>
+                <span className="text-muted-foreground">状态:</span>
+                <span className="text-success font-medium">
+                  {selectedOrder.status === 'pending' ? '待审核' : '已预定'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Leader can cancel or mark as paid for approved orders */}
+            {isLeader && selectedOrder.status === 'approved' && (
+              <div className="flex gap-2">
+                <Button variant="gold" className="flex-1" onClick={() => handleMarkPaid(selectedOrder.id)}>
+                  已到店支付
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => handleCancelBooking(selectedOrder.id)}>
+                  取消预订
+                </Button>
+              </div>
+            )}
+          </div>
+        </>
+      );
+    }
+
+    // Occupied cell (red - completed)
+    if (selectedStatus === 'occupied' && selectedOrder) {
+      return (
+        <>
+          <DialogHeader>
+            <DialogTitle>已完成订单</DialogTitle>
+            <DialogDescription>
+              订单编号: {selectedOrder.id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">房间:</span>
+                <span>{selectedRoom.number}号 {roomTypeLabels[selectedRoom.type]}</span>
+                <span className="text-muted-foreground">日期:</span>
+                <span>{selectedCell.date}</span>
+                <span className="text-muted-foreground">客户:</span>
+                <span>{getCustomerById(selectedOrder.customerId)?.name}</span>
+                <span className="text-muted-foreground">申请人:</span>
+                <span>{selectedOrder.staffId}</span>
+                <span className="text-muted-foreground">状态:</span>
+                <span className="text-destructive font-medium">已完成</span>
+                {selectedOrder.paidAt && (
+                  <>
+                    <span className="text-muted-foreground">支付时间:</span>
+                    <span>{new Date(selectedOrder.paidAt).toLocaleString()}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -170,7 +299,7 @@ export default function BookingGrid() {
               </div>
               <div className="flex-1">
                 <p className="font-medium text-sidebar-foreground">{user?.name}</p>
-                <p className="text-xs text-sidebar-foreground/70">{isLeader ? '队长' : '业务员'}</p>
+                <p className="text-xs text-sidebar-foreground/70">{isLeader ? '队长' : '业务员'} | {user?.id}</p>
               </div>
             </div>
           </div>
@@ -187,7 +316,7 @@ export default function BookingGrid() {
           >
             <Menu className="w-6 h-6" />
           </button>
-          <h1 className="text-lg font-semibold text-foreground">订房情况</h1>
+          <h1 className="text-lg font-semibold text-foreground">排房情况</h1>
           
           {/* Week Navigation */}
           <div className="ml-auto flex items-center gap-2">
@@ -247,7 +376,7 @@ export default function BookingGrid() {
                   const statusStyles = {
                     available: 'bg-muted hover:bg-muted/80 cursor-pointer',
                     booked: 'bg-success/20 border-success/50 cursor-pointer',
-                    occupied: 'bg-destructive/20 border-destructive/50',
+                    occupied: 'bg-destructive/20 border-destructive/50 cursor-pointer',
                   };
 
                   return (
@@ -270,7 +399,7 @@ export default function BookingGrid() {
                         </>
                       )}
                       {status === 'occupied' && (
-                        <span className="text-xs font-medium text-destructive">已占用</span>
+                        <span className="text-xs font-medium text-destructive">已完成</span>
                       )}
                     </button>
                   );
@@ -291,7 +420,7 @@ export default function BookingGrid() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-destructive/20 border border-destructive/50" />
-              <span className="text-muted-foreground">已占用</span>
+              <span className="text-muted-foreground">已完成</span>
             </div>
           </div>
         </div>
@@ -300,77 +429,7 @@ export default function BookingGrid() {
       {/* Booking/Detail Dialog */}
       <Dialog open={!!selectedCell} onOpenChange={() => setSelectedCell(null)}>
         <DialogContent className="max-w-sm mx-auto">
-          {selectedStatus === 'available' ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>预定包厢</DialogTitle>
-                <DialogDescription>
-                  {selectedRoom?.number}号 {selectedRoom && roomTypeLabels[selectedRoom.type]} - {selectedCell?.date}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">选择客户</label>
-                  <Select value={bookingCustomerId} onValueChange={setBookingCustomerId}>
-                    <SelectTrigger className="h-12">
-                      <SelectValue placeholder="请选择客户" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map(c => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name} ({c.phone})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="bg-muted rounded-lg p-3 text-sm">
-                  <p className="text-muted-foreground">业务员: {user?.name} ({user?.id})</p>
-                </div>
-                <Button variant="gold" className="w-full" onClick={handleBooking}>
-                  提交预定
-                </Button>
-              </div>
-            </>
-          ) : selectedOrder ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>预定详情</DialogTitle>
-                <DialogDescription>
-                  订单编号: {selectedOrder.id}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="bg-muted rounded-lg p-4 space-y-2 text-sm">
-                  <div className="grid grid-cols-2 gap-2">
-                    <span className="text-muted-foreground">房间:</span>
-                    <span>{selectedRoom?.number}号 {selectedRoom && roomTypeLabels[selectedRoom.type]}</span>
-                    <span className="text-muted-foreground">日期:</span>
-                    <span>{selectedCell?.date}</span>
-                    <span className="text-muted-foreground">客户:</span>
-                    <span>{getCustomerById(selectedOrder.customerId)?.name}</span>
-                    <span className="text-muted-foreground">申请人:</span>
-                    <span>{selectedOrder.staffId}</span>
-                    <span className="text-muted-foreground">状态:</span>
-                    <span className={selectedOrder.status === 'paid' ? 'text-primary font-medium' : 'text-success font-medium'}>
-                      {selectedOrder.status === 'paid' ? '已支付' : '已预定'}
-                    </span>
-                  </div>
-                </div>
-                
-                {isLeader && selectedOrder.status === 'approved' && (
-                  <div className="flex gap-2">
-                    <Button variant="gold" className="flex-1" onClick={() => handleMarkPaid(selectedOrder.id)}>
-                      已到店并支付
-                    </Button>
-                    <Button variant="outline" className="flex-1" onClick={() => handleCancelBooking(selectedOrder.id)}>
-                      取消预定
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : null}
+          {renderDialogContent()}
         </DialogContent>
       </Dialog>
     </div>

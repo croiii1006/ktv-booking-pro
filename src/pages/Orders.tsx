@@ -34,10 +34,12 @@ export default function Orders() {
   const { user, isLeader } = useAuth();
   const { orders, updateOrderStatus, getCustomerById, getRoomById } = useData();
 
-  // Filter orders: leaders see all, staff see their own
+  // Filter orders based on role
+  // Staff: see their own orders (订单申请)
+  // Leader: see only staff applications, not their own (订单审核)
   const filteredOrders = isLeader 
-    ? orders 
-    : orders.filter(o => o.staffId === user?.id);
+    ? orders.filter(o => o.staffId !== user?.id) // Leader sees staff orders only
+    : orders.filter(o => o.staffId === user?.id); // Staff sees their own orders
 
   // Sort by date and status
   const sortedOrders = [...filteredOrders].sort((a, b) => {
@@ -72,8 +74,10 @@ export default function Orders() {
     setSelectedOrder(null);
   };
 
+  const pageTitle = isLeader ? '订单审核' : '订单申请';
+
   return (
-    <AppLayout title="订单列表">
+    <AppLayout title={pageTitle}>
       <div className="p-4 space-y-3">
         {sortedOrders.map((order) => {
           const room = getRoomById(order.roomId);
@@ -101,6 +105,9 @@ export default function Orders() {
                   <p className="text-sm text-muted-foreground mt-1">
                     客户: {customer?.name} | 日期: {order.date}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    申请人: {order.staffId}
+                  </p>
                 </div>
               </div>
             </button>
@@ -109,7 +116,7 @@ export default function Orders() {
 
         {sortedOrders.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            暂无订单
+            暂无{isLeader ? '待审核订单' : '订单申请'}
           </div>
         )}
       </div>
